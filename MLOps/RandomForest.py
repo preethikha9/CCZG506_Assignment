@@ -32,51 +32,6 @@ def filter_(value: str):
     else:
         return value
 
-def preprocess_data(train):
-    # Drop unnecessary columns
-    train.drop(["ID", "Customer_ID", "Name", "SSN", "Month", "Type_of_Loan"], axis=1, inplace=True)
-    
-    # Replace specific values in columns
-    train['Credit_Mix'] = train['Credit_Mix'].replace('_', np.nan)
-    train['Changed_Credit_Limit'] = train['Changed_Credit_Limit'].replace('_', np.nan).astype("float")
-    train['Changed_Credit_Limit'] = train['Changed_Credit_Limit'].fillna(train["Changed_Credit_Limit"].mean()).round(3)
-    train['Monthly_Balance'] = train['Monthly_Balance'].replace('__-333333333333333333333333333__', np.nan).astype("float")
-    
-    # Replace strings in Payment_Behaviour and map to integers
-    train["Payment_Behaviour"] = train["Payment_Behaviour"].replace({
-        "!@9#%8": np.nan, "Low_spent_Small_value_payments": 1, "Low_spent_Medium_value_payments": 2, 
-        "Low_spent_Large_value_payments": 3, "High_spent_Small_value_payments": 4, 
-        "High_spent_Medium_value_payments": 5, "High_spent_Large_value_payments": 6
-    })
-    
-    # Apply custom filters
-    train["Outstanding_Debt"] = train["Outstanding_Debt"].apply(filter_col).astype(float)
-    train["Age"] = train["Age"].apply(filter_col).astype(int)
-    train.loc[(train["Age"] > 90) | (train["Age"] < 10), "Age"] = np.nan
-    train["Annual_Income"] = train["Annual_Income"].apply(filter_col).astype(float)
-    train["Num_of_Loan"] = train["Num_of_Loan"].apply(filter_col).astype(int)
-    train.loc[train["Num_of_Loan"] > 100, "Num_of_Loan"] = np.nan
-    train["Occupation"] = train["Occupation"].replace("_______", np.nan).astype("object")
-    train["Num_of_Delayed_Payment"] = train["Num_of_Delayed_Payment"].apply(filter_).replace("NaN", np.nan).astype("float")
-    
-    # Replace '__10000__' in Amount_invested_monthly with NaN and convert to float
-    train["Amount_invested_monthly"] = train["Amount_invested_monthly"].replace(["NaN", "__10000__"], np.nan).astype("float").round(3)
-    
-    # Split credit history into years and months
-    years, months = split_credit_history(train)
-    train['Credit_Age_years'] = pd.Series(years)
-    train['Credit_Age_months'] = pd.Series(months)
-    train.drop('Credit_History_Age', axis=1, inplace=True)
-
-    # Additional data cleaning and formatting
-    train["Delay_from_due_date"] = train["Delay_from_due_date"].clip(lower=0)
-    train["Num_Bank_Accounts"] = train["Num_Bank_Accounts"].replace(-1, 0)
-    train["Credit_Utilization_Ratio"] = train["Credit_Utilization_Ratio"].round(2)
-    train["Total_EMI_per_month"] = train["Total_EMI_per_month"].astype("float").round(3)
-    
-    # Encode categorical data
-    train['Credit_Mix'] = train['Credit_Mix'].replace({"Standard": 1, "Bad": 2, "Good": 3, "-": np.nan})
-    return train
 
 
 # Split Credit History into years and months
@@ -192,7 +147,7 @@ def log_to_mlflow(model, X_train, X_test, y_train, y_test):
 # Main function to run all steps
 def main():
     train = load_data()
-    train = preprocess_data(train)
+    # train = preprocess_data(train)
     train = impute_missing_values(train)
     X = train.drop("Credit_Score", axis=1)
     y = train["Credit_Score"]
